@@ -54,3 +54,26 @@ def test_tryon_bad_type_returns_400(client_with_fake, png_bytes):
         },
     )
     assert response.status_code == 400
+
+
+def test_tryon_oversized_upload_returns_400(png_bytes):
+    from app.config import Settings
+    from app.main import get_settings
+
+    fake = FakeProvider()
+    tiny = Settings(fal_key="test", max_image_bytes=10)  # png_bytes is larger than 10 bytes
+    app.dependency_overrides[get_provider] = lambda: fake
+    app.dependency_overrides[get_settings] = lambda: tiny
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/tryon",
+                files={
+                    "person": ("p.png", png_bytes, "image/png"),
+                    "garment": ("g.png", png_bytes, "image/png"),
+                },
+            )
+        assert response.status_code == 400
+        assert fake.calls == []  # provider never reached
+    finally:
+        app.dependency_overrides.clear()

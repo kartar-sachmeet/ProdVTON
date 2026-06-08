@@ -31,6 +31,15 @@ async def health() -> HealthResponse:
     return HealthResponse()
 
 
+def _ensure_upload_within_limit(upload: UploadFile, *, field: str, max_bytes: int) -> None:
+    """Reject an upload that declares a size over the limit, before reading it into memory."""
+    if upload.size is not None and upload.size > max_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field} image exceeds maximum size of {max_bytes} bytes.",
+        )
+
+
 @app.post("/api/tryon", response_model=TryOnResponse)
 async def tryon(
     person: UploadFile,
@@ -39,6 +48,10 @@ async def tryon(
     provider: VTONProvider = Depends(get_provider),
     config: Settings = Depends(get_settings),
 ) -> TryOnResponse:
+    _ensure_upload_within_limit(person, field="Person", max_bytes=config.max_image_bytes)
+    if garment is not None:
+        _ensure_upload_within_limit(garment, field="Garment", max_bytes=config.max_image_bytes)
+
     person_bytes = await person.read()
     garment_bytes = await garment.read() if garment is not None else None
 
