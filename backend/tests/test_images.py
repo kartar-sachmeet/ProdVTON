@@ -34,7 +34,7 @@ async def test_fetch_returns_bytes_and_type(png_bytes):
 
     async with httpx.AsyncClient(transport=_transport(handler)) as client:
         data, content_type = await fetch_image_from_url(
-            "https://example.com/g.png", client=client, max_bytes=1_000_000
+            "http://93.184.216.34/g.png", client=client, max_bytes=1_000_000
         )
     assert data == png_bytes
     assert content_type == "image/png"
@@ -47,7 +47,7 @@ async def test_fetch_rejects_non_image():
     async with httpx.AsyncClient(transport=_transport(handler)) as client:
         with pytest.raises(ImageError):
             await fetch_image_from_url(
-                "https://example.com/page", client=client, max_bytes=1_000_000
+                "http://93.184.216.34/page", client=client, max_bytes=1_000_000
             )
 
 
@@ -58,5 +58,34 @@ async def test_fetch_rejects_http_error():
     async with httpx.AsyncClient(transport=_transport(handler)) as client:
         with pytest.raises(ImageError):
             await fetch_image_from_url(
-                "https://example.com/missing.png", client=client, max_bytes=1_000_000
+                "http://93.184.216.34/missing.png", client=client, max_bytes=1_000_000
             )
+
+
+async def test_fetch_rejects_bad_scheme():
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ImageError):
+            await fetch_image_from_url("file:///etc/passwd", client=client, max_bytes=1_000_000)
+
+
+async def test_fetch_rejects_loopback_address():
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ImageError):
+            await fetch_image_from_url("http://127.0.0.1/x.png", client=client, max_bytes=1_000_000)
+
+
+async def test_fetch_rejects_link_local_metadata_address():
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ImageError):
+            await fetch_image_from_url("http://169.254.169.254/latest/meta-data", client=client, max_bytes=1_000_000)
+
+
+async def test_fetch_aborts_when_body_exceeds_max_bytes(png_bytes):
+    big = png_bytes * 100
+
+    def handler(request):
+        return httpx.Response(200, content=big, headers={"content-type": "image/png"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ImageError):
+            await fetch_image_from_url("http://93.184.216.34/big.png", client=client, max_bytes=50)

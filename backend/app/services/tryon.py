@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 
 from app.providers.base import VTONProvider
-from app.services.images import ImageError, fetch_image_from_url, validate_image_bytes
+from app.services.images import ALLOWED_TYPES_DEFAULT, ImageError, fetch_image_from_url, validate_image_bytes
 
 
 async def generate_tryon(
@@ -16,8 +16,9 @@ async def generate_tryon(
     garment_url: str | None,
     http_client: httpx.AsyncClient | None,
     max_bytes: int,
+    allowed_types: tuple[str, ...] = ALLOWED_TYPES_DEFAULT,
 ) -> str:
-    validate_image_bytes(person_bytes, content_type=person_content_type, max_bytes=max_bytes)
+    validate_image_bytes(person_bytes, content_type=person_content_type, max_bytes=max_bytes, allowed_types=allowed_types)
 
     has_file = garment_bytes is not None
     has_url = bool(garment_url)
@@ -25,13 +26,13 @@ async def generate_tryon(
         raise ImageError("Provide exactly one of a garment file or a garment URL.")
 
     if has_file:
-        validate_image_bytes(garment_bytes, content_type=garment_content_type, max_bytes=max_bytes)
+        validate_image_bytes(garment_bytes, content_type=garment_content_type, max_bytes=max_bytes, allowed_types=allowed_types)
         g_bytes, g_type = garment_bytes, (garment_content_type or "image/jpeg")
     else:
         if http_client is None:
             raise ImageError("No HTTP client available to fetch the garment URL.")
         g_bytes, g_type = await fetch_image_from_url(
-            garment_url, client=http_client, max_bytes=max_bytes
+            garment_url, client=http_client, max_bytes=max_bytes, allowed_types=allowed_types
         )
 
     return await provider.try_on(
