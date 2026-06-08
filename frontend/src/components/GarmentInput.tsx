@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { GarmentInputMode } from "../types";
 
 interface Props {
@@ -10,9 +11,23 @@ interface Props {
 }
 
 export function GarmentInput({ mode, onModeChange, file, onFileChange, url, onUrlChange }: Props) {
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setFilePreview(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setFilePreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
   return (
     <div className="field">
-      <label className="field-label">Garment</label>
+      <label className="field-label" htmlFor="garment-input">
+        Garment
+      </label>
       <div className="toggle">
         <button
           type="button"
@@ -32,15 +47,17 @@ export function GarmentInput({ mode, onModeChange, file, onFileChange, url, onUr
       {mode === "upload" ? (
         <>
           <input
+            id="garment-input"
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
           />
-          {file && <img className="preview" src={URL.createObjectURL(file)} alt="garment preview" />}
+          {filePreview && <img className="preview" src={filePreview} alt="garment preview" />}
         </>
       ) : (
         <>
           <input
+            id="garment-input"
             type="url"
             placeholder="https://.../garment.jpg"
             value={url}

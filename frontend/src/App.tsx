@@ -33,7 +33,7 @@ export default function App() {
       });
       setCurrent(url);
       setResults((prev) => [
-        { id: crypto.randomUUID(), resultUrl: url, createdAt: Date.now() },
+        { id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`, resultUrl: url, createdAt: Date.now() },
         ...prev,
       ]);
     } catch (e) {
