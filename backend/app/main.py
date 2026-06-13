@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import httpx
-from fastapi import Depends, FastAPI, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import Settings, get_settings
 from app.providers.base import ProviderError, VTONProvider
 from app.providers.fal_provider import FalVTONProvider
 from app.schemas import HealthResponse, TryOnResponse
+from app.services import fal_proxy
 from app.services.images import ImageError
 from app.services.tryon import generate_tryon
 
@@ -29,6 +30,35 @@ def get_provider() -> VTONProvider:
 @app.get("/api/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse()
+
+
+@app.api_route(
+    "/api/fal/proxy",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+)
+async def fal_proxy_route(
+    request: Request,
+    config: Settings = Depends(get_settings),
+) -> Response:
+    """Proxy browser fal-SDK requests, injecting FAL_KEY server-side."""
+    body = await request.body()
+    async with httpx.AsyncClient(timeout=config.request_timeout_seconds) as client:
+        try:
+            upstream = await fal_proxy.forward(
+                method=request.method,
+                headers=dict(request.headers),
+                body=body,
+                fal_key=config.fal_key,
+                client=client,
+            )
+        except fal_proxy.FalProxyError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    return Response(
+        content=upstream.content,
+        status_code=upstream.status_code,
+        headers=fal_proxy.response_headers(upstream),
+    )
 
 
 def _ensure_upload_within_limit(upload: UploadFile, *, field: str, max_bytes: int) -> None:
