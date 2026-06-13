@@ -36,3 +36,20 @@ h1 { margin-bottom: 0.75rem; }
 input[type="text"], input[type="url"] { padding: 0.5rem; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
 
 @media (max-width: 680px) { .live-grid { grid-template-columns: 1fr; } }
+
+/* Face-AR try-ons (makeup / eyewear / jewellery) */
+.ar-layout { display: grid; grid-template-columns: 1fr 280px; gap: 1.5rem; margin-top: 1rem; align-items: start; }
+.ar-frame { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #111; border-radius: 12px; overflow: hidden; }
+.ar-video, .ar-canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.ar-canvas { pointer-events: none; }
+.ar-overlay-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; text-align: center; padding: 1rem; background: rgba(0,0,0,0.45); }
+.ar-overlay-msg.error { color: #ffb3b3; }
+.ar-controls { display: grid; gap: 1.25rem; }
+.ar-control-group { display: grid; gap: 0.5rem; }
+.ar-toggle { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+.swatches { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.swatch { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc; cursor: pointer; padding: 0; }
+.swatch.active { box-shadow: 0 0 0 2px #111; }
+.ar-style-btn { padding: 0.4rem 0.8rem; border: 1px solid #ccc; background: #fff; border-radius: 6px; cursor: pointer; }
+.ar-style-btn.active { background: #111; color: #fff; border-color: #111; }
+@media (max-width: 680px) { .ar-layout { grid-template-columns: 1fr; } }

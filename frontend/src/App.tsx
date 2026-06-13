@@ -2,8 +2,9 @@ import { useState } from "react";
 import "./App.css";
 import { LiveTryOn } from "./components/LiveTryOn";
 import { PhotoTryOn } from "./components/PhotoTryOn";
+import { MakeupTryOn } from "./makeup/MakeupTryOn";
 
-type View = "photo" | "live";
+type View = "photo" | "live" | "makeup";
 
 export default function App() {
   const [view, setView] = useState<View>("photo");
@@ -27,9 +28,18 @@ export default function App() {
         >
           Live camera
         </button>
+        <button
+          type="button"
+          className={view === "makeup" ? "active" : ""}
+          onClick={() => setView("makeup")}
+        >
+          Makeup
+        </button>
       </nav>
 
-      {view === "photo" ? <PhotoTryOn /> : <LiveTryOn />}
+      {view === "photo" && <PhotoTryOn />}
+      {view === "live" && <LiveTryOn />}
+      {view === "makeup" && <MakeupTryOn />}
     </main>
   );
 }
