@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLucyRealtime } from "../hooks/useLucyRealtime";
 import { resolveGarmentUrl } from "../lib/garment";
 import type { GarmentInputMode } from "../types";
@@ -18,6 +18,11 @@ export function LiveTryOn() {
   const outputRef = useRef<HTMLVideoElement>(null);
   const getOutputVideo = useCallback(() => outputRef.current, []);
   const lucy = useLucyRealtime(getOutputVideo);
+
+  // Tear down the (billed) realtime session if the user navigates away.
+  const stopRef = useRef(lucy.stop);
+  stopRef.current = lucy.stop;
+  useEffect(() => () => stopRef.current(), []);
 
   const isStreaming = lucy.status === "connecting" || lucy.status === "live";
   const hasGarment =
