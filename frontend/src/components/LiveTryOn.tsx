@@ -20,9 +20,9 @@ export function LiveTryOn() {
   const lucy = useLucyRealtime(getOutputVideo);
 
   // Tear down the (billed) realtime session if the user navigates away.
-  const stopRef = useRef(lucy.stop);
-  stopRef.current = lucy.stop;
-  useEffect(() => () => stopRef.current(), []);
+  // lucy.stop is stable (useCallback), so this cleanup only fires on unmount.
+  const stop = lucy.stop;
+  useEffect(() => () => stop(), [stop]);
 
   const isStreaming = lucy.status === "connecting" || lucy.status === "live";
   const hasGarment =

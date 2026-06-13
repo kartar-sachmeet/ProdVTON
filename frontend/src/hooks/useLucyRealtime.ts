@@ -8,6 +8,18 @@ export interface GarmentPayload {
   reference_image_url?: string;
 }
 
+/** Server messages emitted by the realtime model over the signaling channel. */
+interface RealtimeMessage {
+  type: string;
+  sdp?: string;
+  candidate?: RTCIceCandidateInit;
+  iceservers?: RTCIceServer[];
+  iceServers?: RTCIceServer[];
+  ice_servers?: RTCIceServer[];
+  success?: boolean;
+  error?: string;
+}
+
 const MODEL_ID = "decart/lucy2-vton/realtime";
 
 /**
@@ -59,7 +71,7 @@ export function useLucyRealtime(getOutputVideo: () => HTMLVideoElement | null) {
           setError(err instanceof Error ? err.message : "Realtime connection error.");
           setStatus("error");
         },
-        onResult: async (result: any) => {
+        onResult: async (result: RealtimeMessage) => {
           try {
             await handleResult(result);
           } catch (e) {
@@ -70,12 +82,12 @@ export function useLucyRealtime(getOutputVideo: () => HTMLVideoElement | null) {
       });
       connectionRef.current = connection;
 
-      async function handleResult(result: any) {
+      async function handleResult(result: RealtimeMessage) {
         switch (result.type) {
           case "iceservers":
           case "iceServers": {
             const raw = result.iceservers || result.iceServers || result.ice_servers || [];
-            const servers = raw.map((s: any) => ({
+            const servers: RTCIceServer[] = raw.map((s) => ({
               urls: s.urls,
               username: s.username,
               credential: s.credential,
