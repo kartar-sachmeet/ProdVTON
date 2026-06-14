@@ -52,4 +52,10 @@ input[type="text"], input[type="url"] { padding: 0.5rem; border: 1px solid #ccc;
 .swatch.active { box-shadow: 0 0 0 2px #111; }
 .ar-style-btn { padding: 0.4rem 0.8rem; border: 1px solid #ccc; background: #fff; border-radius: 6px; cursor: pointer; }
 .ar-style-btn.active { background: #111; color: #fff; border-color: #111; }
+.ar-slider { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+.ar-slider input[type="range"] { flex: 1; }
 @media (max-width: 680px) { .ar-layout { grid-template-columns: 1fr; } }
+
+/* Camera capture in Photo mode */
+.capture { display: grid; gap: 0.5rem; justify-items: start; }
+.capture-video { width: 100%; max-width: 320px; aspect-ratio: 4 / 3; background: #111; border-radius: 10px; object-fit: cover; transform: scaleX(-1); }

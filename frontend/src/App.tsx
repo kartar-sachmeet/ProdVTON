@@ -2,9 +2,19 @@ import { useState } from "react";
 import "./App.css";
 import { LiveTryOn } from "./components/LiveTryOn";
 import { PhotoTryOn } from "./components/PhotoTryOn";
+import { EyewearTryOn } from "./eyewear/EyewearTryOn";
+import { JewelleryTryOn } from "./jewellery/JewelleryTryOn";
 import { MakeupTryOn } from "./makeup/MakeupTryOn";
 
-type View = "photo" | "live" | "makeup";
+type View = "photo" | "live" | "makeup" | "eyewear" | "jewellery";
+
+const TABS: { id: View; label: string }[] = [
+  { id: "photo", label: "Photo" },
+  { id: "live", label: "Live camera" },
+  { id: "makeup", label: "Makeup" },
+  { id: "eyewear", label: "Eyewear" },
+  { id: "jewellery", label: "Jewellery" },
+];
 
 export default function App() {
   const [view, setView] = useState<View>("photo");
@@ -14,32 +24,23 @@ export default function App() {
       <h1>ProdVton — Virtual Try-On</h1>
 
       <nav className="nav">
-        <button
-          type="button"
-          className={view === "photo" ? "active" : ""}
-          onClick={() => setView("photo")}
-        >
-          Photo
-        </button>
-        <button
-          type="button"
-          className={view === "live" ? "active" : ""}
-          onClick={() => setView("live")}
-        >
-          Live camera
-        </button>
-        <button
-          type="button"
-          className={view === "makeup" ? "active" : ""}
-          onClick={() => setView("makeup")}
-        >
-          Makeup
-        </button>
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={view === t.id ? "active" : ""}
+            onClick={() => setView(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
       </nav>
 
       {view === "photo" && <PhotoTryOn />}
       {view === "live" && <LiveTryOn />}
       {view === "makeup" && <MakeupTryOn />}
+      {view === "eyewear" && <EyewearTryOn />}
+      {view === "jewellery" && <JewelleryTryOn />}
     </main>
   );
 }

@@ -3,7 +3,7 @@ import { requestTryOn } from "../api";
 import type { GarmentInputMode, TryOnResult } from "../types";
 import { GarmentInput } from "./GarmentInput";
 import { GenerateButton } from "./GenerateButton";
-import { PersonUploader } from "./PersonUploader";
+import { PersonInput } from "./PersonInput";
 import { ResultView } from "./ResultView";
 import { SessionGallery } from "./SessionGallery";
 
@@ -45,10 +45,10 @@ export function PhotoTryOn() {
 
   return (
     <div className="photo">
-      <p className="subtitle">Upload a photo and a garment to see how it looks.</p>
+      <p className="subtitle">Upload or snap a photo, add a garment, and see how it looks.</p>
 
       <div className="inputs">
-        <PersonUploader file={person} onChange={setPerson} />
+        <PersonInput file={person} onChange={setPerson} />
         <GarmentInput
           mode={garmentMode}
           onModeChange={setGarmentMode}
