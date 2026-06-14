@@ -1,0 +1,7 @@
+runpod>=1.7.0
+# TRELLIS and its CUDA deps (kaolin, nvdiffrast, diff-gaussian-rasterization, etc.)
+# are installed from source in the Dockerfile — they need build steps and CUDA,
+# so they can't be pinned cleanly here.
+Pillow>=10.4.0
+trimesh>=4.4.0
+numpy>=1.26.0

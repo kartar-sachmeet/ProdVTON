@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { useFaceTracker, type Landmark, type TrackFrame } from "./useFaceTracker";
 
 interface Props {
@@ -7,6 +8,18 @@ interface Props {
   buildModel: () => THREE.Object3D;
   /** Change this (e.g. a serialized options string) to swap the model live. */
   rebuildKey: string;
+  /** Optional ingested GLB (object URL); when set, it replaces the procedural model. */
+  glbUrl?: string | null;
+}
+
+/** Center an object at the origin and scale its bounding box to `targetWidth`. */
+function normalizeToWidth(obj: THREE.Object3D, targetWidth = 1.3) {
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const scale = size.x > 0 ? targetWidth / size.x : 1;
+  obj.scale.multiplyScalar(scale);
+  obj.position.sub(center.multiplyScalar(scale));
 }
 
 const px = (lm: Landmark, w: number, h: number) => ({ x: lm.x * w, y: lm.y * h });
@@ -27,7 +40,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
  * NOTE: offset/scale/rotation constants below are reasonable defaults but need
  * on-camera tuning — placement realism can't be verified without a live feed.
  */
-export function ArStage3D({ buildModel, rebuildKey }: Props) {
+export function ArStage3D({ buildModel, rebuildKey, glbUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -75,14 +88,30 @@ export function ArStage3D({ buildModel, rebuildKey }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Swap the accessory model when options change, without restarting the camera.
+  // Swap the accessory model when options change (or an ingested GLB arrives),
+  // without restarting the camera. GLB load is async + cancellable.
   useEffect(() => {
     const anchor = anchorRef.current;
     if (!anchor) return;
-    anchor.clear();
-    anchor.add(buildModelRef.current());
+    let cancelled = false;
+
+    if (glbUrl) {
+      new GLTFLoader().load(glbUrl, (gltf) => {
+        if (cancelled) return;
+        normalizeToWidth(gltf.scene);
+        anchor.clear();
+        anchor.add(gltf.scene);
+      });
+    } else {
+      anchor.clear();
+      anchor.add(buildModelRef.current());
+    }
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rebuildKey]);
+  }, [rebuildKey, glbUrl]);
 
   const onFrame = (frame: TrackFrame) => {
     const renderer = rendererRef.current;

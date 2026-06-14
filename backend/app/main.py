@@ -8,6 +8,7 @@ from app.config import Settings, get_settings
 from app.providers.base import ProviderError, VTONProvider
 from app.providers.fal_provider import FalVTONProvider
 from app.providers.makeup_provider import RunPodMakeupProvider
+from app.providers.model3d_provider import RunPodModel3DProvider
 from app.providers.runpod_provider import RunPodVTONProvider
 from app.schemas import HealthResponse, TryOnResponse
 from app.services import fal_proxy
@@ -34,6 +35,10 @@ def get_provider() -> VTONProvider:
 
 def get_makeup_provider() -> RunPodMakeupProvider:
     return RunPodMakeupProvider(get_settings())
+
+
+def get_model3d_provider() -> RunPodModel3DProvider:
+    return RunPodModel3DProvider(get_settings())
 
 
 @app.get("/api/health", response_model=HealthResponse)
@@ -113,6 +118,26 @@ async def tryon(
             raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return TryOnResponse(result_url=result_url)
+
+
+@app.post("/api/ingest-3d")
+async def ingest_3d(
+    image: UploadFile,
+    provider: RunPodModel3DProvider = Depends(get_model3d_provider),
+    config: Settings = Depends(get_settings),
+) -> Response:
+    """Product image -> GLB 3D asset (TRELLIS via RunPod). Returns the binary GLB."""
+    _ensure_upload_within_limit(image, field="Image", max_bytes=config.max_image_bytes)
+    image_bytes = await image.read()
+    try:
+        glb = await provider.generate(image_bytes=image_bytes)
+    except ProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return Response(
+        content=glb,
+        media_type="model/gltf-binary",
+        headers={"Content-Disposition": 'attachment; filename="asset.glb"'},
+    )
 
 
 @app.post("/api/makeup", response_model=TryOnResponse)

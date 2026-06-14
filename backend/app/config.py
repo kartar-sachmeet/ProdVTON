@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     runpod_endpoint_id: str = ""  # CatVTON-FLUX clothing worker
     runpod_category: str = "upper"  # upper | lower | overall
     runpod_makeup_endpoint_id: str = ""  # Stable-Makeup worker
+    runpod_image3d_endpoint_id: str = ""  # TRELLIS image-to-3D ingestion worker
 
     max_image_bytes: int = 10 * 1024 * 1024  # 10 MB
     allowed_image_types: tuple[str, ...] = ("image/jpeg", "image/png", "image/webp")
