@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import Settings, get_settings
 from app.providers.base import ProviderError, VTONProvider
 from app.providers.fal_provider import FalVTONProvider
+from app.providers.makeup_provider import RunPodMakeupProvider
+from app.providers.runpod_provider import RunPodVTONProvider
 from app.schemas import HealthResponse, TryOnResponse
 from app.services import fal_proxy
 from app.services.images import ImageError
@@ -24,7 +26,14 @@ app.add_middleware(
 
 
 def get_provider() -> VTONProvider:
-    return FalVTONProvider(get_settings())
+    settings = get_settings()
+    if settings.vton_provider == "runpod":
+        return RunPodVTONProvider(settings)
+    return FalVTONProvider(settings)
+
+
+def get_makeup_provider() -> RunPodMakeupProvider:
+    return RunPodMakeupProvider(get_settings())
 
 
 @app.get("/api/health", response_model=HealthResponse)
@@ -102,5 +111,31 @@ async def tryon(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except ProviderError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return TryOnResponse(result_url=result_url)
+
+
+@app.post("/api/makeup", response_model=TryOnResponse)
+async def makeup(
+    source: UploadFile,
+    reference: UploadFile,
+    intensity: float = Form(default=1.0),
+    provider: RunPodMakeupProvider = Depends(get_makeup_provider),
+    config: Settings = Depends(get_settings),
+) -> TryOnResponse:
+    """High-fidelity generative makeup transfer (Stable-Makeup via RunPod)."""
+    _ensure_upload_within_limit(source, field="Source", max_bytes=config.max_image_bytes)
+    _ensure_upload_within_limit(reference, field="Reference", max_bytes=config.max_image_bytes)
+
+    source_bytes = await source.read()
+    reference_bytes = await reference.read()
+    try:
+        result_url = await provider.transfer(
+            source_bytes=source_bytes,
+            reference_bytes=reference_bytes,
+            intensity=intensity,
+        )
+    except ProviderError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return TryOnResponse(result_url=result_url)

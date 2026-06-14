@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { ArStage } from "../ar/ArStage";
+import { MakeupGenerative } from "./MakeupGenerative";
 import { makeMakeupDraw, type MakeupOptions, type RGB } from "./makeupDraw";
+
+type MakeupMode = "live" | "generative";
 
 interface Shade {
   name: string;
@@ -30,6 +33,7 @@ const BLUSH_SHADES: Shade[] = [
 const swatchStyle = ({ r, g, b }: RGB) => ({ backgroundColor: `rgb(${r},${g},${b})` });
 
 export function MakeupTryOn() {
+  const [mode, setMode] = useState<MakeupMode>("live");
   const [opts, setOpts] = useState<MakeupOptions>({
     lipstick: { on: true, color: LIP_SHADES[0].color },
     eyeshadow: { on: true, color: EYE_SHADES[0].color },
@@ -51,6 +55,25 @@ export function MakeupTryOn() {
 
   return (
     <div className="ar-page">
+      <div className="toggle" style={{ marginBottom: "0.75rem" }}>
+        <button type="button" className={mode === "live" ? "active" : ""} onClick={() => setMode("live")}>
+          Live AR (real-time)
+        </button>
+        <button type="button" className={mode === "generative" ? "active" : ""} onClick={() => setMode("generative")}>
+          High-fidelity (generative)
+        </button>
+      </div>
+
+      {mode === "generative" ? (
+        <>
+          <p className="subtitle">
+            Generative makeup transfer (Stable-Makeup via RunPod) — upload a face + a reference look.
+            Higher fidelity, not real-time. Requires the makeup endpoint configured in the backend.
+          </p>
+          <MakeupGenerative />
+        </>
+      ) : (
+      <>
       <p className="subtitle">
         Real-time AR makeup — MediaPipe face mesh + procedural rendering, all in your browser. No
         server, no API keys.
@@ -87,6 +110,8 @@ export function MakeupTryOn() {
           ))}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

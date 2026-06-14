@@ -1,7 +1,18 @@
-# ProdVton — Virtual Try-On MVP
+# ProdVton — Virtual Try-On Suite
 
-Upload a person photo and a garment (file or image URL) to see the person wearing it.
-Powered by the fal.ai hosted try-on API behind a swappable provider adapter.
+A multi-vertical try-on app using the right technique per category:
+
+| Vertical | Technique | Backend |
+|---|---|---|
+| **Clothing** (Photo tab) | Generative diffusion | fal Kling (hosted) **or** CatVTON-FLUX on RunPod (`VTON_PROVIDER`) |
+| **Makeup** | Real-time AR (MediaPipe) + optional generative | in-browser; high-fidelity via Stable-Makeup on RunPod (`/api/makeup`) |
+| **Eyewear** | Real-time **3D AR** (three.js + head pose + occluder) | in-browser, no server |
+| **Jewellery** | Real-time AR | in-browser, no server |
+| **Live camera** | Real-time generative video | fal Lucy2 VTON (needs realtime entitlement) |
+
+Principle: **AR where it's the production SOTA (makeup/eyewear/jewellery), generative
+diffusion where AR can't compete (clothing).** Self-hosted GPU workers live in
+`runpod/` (deploy-ready). See `docs/research/ar-tryon-oss.md` for the approach.
 
 ## Prerequisites
 - Python 3.13 + [uv](https://docs.astral.sh/uv/)
