@@ -2,7 +2,7 @@ import { useState } from "react";
 import "./App.css";
 import { LiveTryOn } from "./components/LiveTryOn";
 import { PhotoTryOn } from "./components/PhotoTryOn";
-import { EyewearTryOn } from "./eyewear/EyewearTryOn";
+import { Eyewear3DTryOn } from "./eyewear/Eyewear3DTryOn";
 import { JewelleryTryOn } from "./jewellery/JewelleryTryOn";
 import { MakeupTryOn } from "./makeup/MakeupTryOn";
 
@@ -39,7 +39,7 @@ export default function App() {
       {view === "photo" && <PhotoTryOn />}
       {view === "live" && <LiveTryOn />}
       {view === "makeup" && <MakeupTryOn />}
-      {view === "eyewear" && <EyewearTryOn />}
+      {view === "eyewear" && <Eyewear3DTryOn />}
       {view === "jewellery" && <JewelleryTryOn />}
     </main>
   );
