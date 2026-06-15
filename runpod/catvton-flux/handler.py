@@ -48,18 +48,25 @@ _pipe: FluxFillPipeline | None = None
 _automasker = None
 
 
+def log(msg: str) -> None:
+    print(f"[catvton] {msg}", flush=True)
+
+
 def _load_pipeline() -> FluxFillPipeline:
     global _pipe
     if _pipe is None:
+        log(f"loading transformer {CATVTON_TRANSFORMER} …")
         transformer = FluxTransformer2DModel.from_pretrained(
             CATVTON_TRANSFORMER, torch_dtype=torch.bfloat16
         )
+        log(f"loading FluxFillPipeline base {FLUX_BASE} …")
         pipe = FluxFillPipeline.from_pretrained(
             FLUX_BASE, transformer=transformer, torch_dtype=torch.bfloat16
         )
         pipe.to("cuda")
         pipe.enable_model_cpu_offload()  # fit ~24GB; drop if you have headroom
         _pipe = pipe
+        log("pipeline ready ✓")
     return _pipe
 
 
@@ -70,12 +77,14 @@ def _get_automasker():
         from huggingface_hub import snapshot_download
         from model.cloth_masker import AutoMasker  # CatVTON repo on PYTHONPATH
 
+        log(f"downloading masker checkpoints from {CATVTON_REPO} …")
         repo = snapshot_download(repo_id=CATVTON_REPO)
         _automasker = AutoMasker(
             densepose_ckpt=os.path.join(repo, "DensePose"),
             schp_ckpt=os.path.join(repo, "SCHP"),
             device="cuda",
         )
+        log("automasker ready ✓")
     return _automasker
 
 
@@ -99,8 +108,10 @@ def _build_mask(person: Image.Image, category: str, supplied: str | None) -> Ima
 
 
 def run_tryon(job_input: dict) -> dict:
+    log("job received; decoding inputs")
     person = _decode(job_input["person_image"]).resize((WIDTH, HEIGHT))
     garment = _decode(job_input["garment_image"]).resize((WIDTH, HEIGHT))
+    log("building agnostic mask")
     mask = _build_mask(person, job_input.get("category", "upper"), job_input.get("mask_image"))
 
     canvas = Image.new("RGB", (WIDTH * 2, HEIGHT))
@@ -113,6 +124,7 @@ def run_tryon(job_input: dict) -> dict:
     generator = torch.Generator("cuda").manual_seed(int(seed)) if seed is not None else None
 
     pipe = _load_pipeline()
+    log("running diffusion")
     result = pipe(
         prompt=PROMPT,
         image=canvas,
@@ -124,7 +136,7 @@ def run_tryon(job_input: dict) -> dict:
         max_sequence_length=512,
         generator=generator,
     ).images[0]
-
+    log("done ✓")
     return {"image": _encode(result.crop((WIDTH, 0, WIDTH * 2, HEIGHT)))}
 
 
@@ -132,7 +144,13 @@ def handler(job):
     try:
         return run_tryon(job["input"])
     except Exception as exc:
+        import traceback
+
+        log(f"ERROR: {type(exc).__name__}: {exc}\n{traceback.format_exc()}")
         return {"error": f"{type(exc).__name__}: {exc}"}
+
+
+log("handler module imported ✓ (torch/diffusers OK)")
 
 
 runpod.serverless.start({"handler": handler})
