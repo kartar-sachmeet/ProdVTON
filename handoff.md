@@ -16,22 +16,20 @@ can't compete (clothing). Self-hosted generative runs on **RunPod serverless**.
 | **Photo** (clothing) | Generative diffusion | Works on **fal Kling** today; flip to self-hosted **CatVTON-FLUX** with `VTON_PROVIDER=runpod` |
 | **Live camera** | fal Lucy2 VTON realtime | Blocked — account lacks realtime entitlement (see Gotchas) |
 | **Makeup** | Generative (Stable-Makeup) | UI built; needs the makeup RunPod endpoint |
-| **Eyewear** | **3D AR** (three.js + head pose + occluder) + product→3D ingest | Works in-browser; placement constants need on-camera tuning |
+| **Eyewear** | **3D AR** — product photo → 3D (TRELLIS) → posed live | needs image-to-3D endpoint; GLB orientation needs tuning |
+| **Jewellery** | **3D AR** — product photo → 3D → earrings (pair) / necklace | needs image-to-3D endpoint; placement constants need tuning |
 
-### Just removed (this session)
-The crude **2D canvas renditions** were deleted: 2D eyewear (superseded by 3D),
-the procedural live makeup AR, and the 2D jewellery — plus the now-dead 2D AR core
-(`frontend/src/ar/`). Consequences:
-- **Makeup** is now generative-only (the real-time AR makeup was procedural/crude).
-- **Jewellery tab was removed** — no rendition remains until it's rebuilt.
+### Design (this session)
+The crude 2D canvas renditions and procedural 3D frames were removed. Accessories
+are now **product-photo → 3D (ingestion) → live AR pose** — no fake built-in assets.
+Makeup is generative-only for now.
 
 ### Rebuild backlog (AR done properly)
-- **Jewellery (3D):** earrings via `ar3d/` (head pose + occluder), necklace needs
-  **MediaPipe Pose Landmarker** (neck/shoulders). Then re-add the Jewellery tab.
+- **Necklace:** chin-anchored today; true neck/shoulder draping wants **MediaPipe
+  Pose Landmarker**.
 - **Makeup (real-time AR, the true SOTA):** MediaPipe face mesh + **face-parsing
   masks (BiSeNet)** + PBR finish shaders — keep generative as the high-fidelity mode.
-- **Eyewear:** tune `ArStage3D` placement constants on a live camera; consider
-  Jeeliz for turnkey PBR.
+- **Eyewear/jewellery:** tune placement + ingested-GLB orientation on a live camera.
 - See `docs/research/ar-tryon-oss.md` for the OSS approach + model picks.
 
 ---
@@ -42,9 +40,14 @@ Three deploy-ready workers in `runpod/` (each has its own README):
 
 | Worker | Dir | Purpose | GPU | Key prereqs |
 |---|---|---|---|---|
-| **CatVTON-FLUX** | `runpod/catvton-flux/` | clothing try-on | 24GB+ | `HF_TOKEN` (accept FLUX.1-Fill-dev license); optional auto-mask (DensePose/SCHP) |
-| **Stable-Makeup** | `runpod/stable-makeup/` | makeup transfer | 16GB+ | Stable-Makeup checkpoints on volume |
+| **CatVTON-FLUX** | `runpod/catvton-flux/` | clothing try-on | 24GB+ | `HF_TOKEN` (accept **FLUX.1-dev** license). Auto-masking is **built in** (AutoMasker ckpts auto-pulled from `zhengchong/CatVTON`). |
+| **Stable-Makeup** | `runpod/stable-makeup/` | makeup transfer | 16GB+ | Stable-Makeup checkpoints under `MODELS_DIR` (layout in its README) |
 | **TRELLIS** | `runpod/image-to-3d/` | product photo → GLB | 24GB+ | builds TRELLIS from source |
+
+> **Gaps closed this session:** CatVTON now self-masks (no backend mask needed; base is
+> FLUX.1-dev). Stable-Makeup handler rewritten to match the repo's `infer_kps.py`.
+> Remaining per-worker risks are just **pin-a-commit + checkpoint download + first-deploy
+> verification** (and ingested-GLB orientation tuning).
 
 Per worker:
 1. `docker build -t <user>/<name>:latest runpod/<name> && docker push …`
