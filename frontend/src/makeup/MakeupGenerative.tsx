@@ -40,7 +40,7 @@ export function MakeupGenerative() {
           Intensity
           <input type="range" min={0.2} max={2} step={0.1} value={intensity} onChange={(e) => setIntensity(Number(e.target.value))} />
         </label>
-        <button type="button" className="live-controls" onClick={run} disabled={!canRun} style={{ padding: "0.6rem 1.2rem" }}>
+        <button type="button" className="btn-primary" onClick={run} disabled={!canRun}>
           {loading ? "Generating…" : "Transfer makeup"}
         </button>
         {error && <p className="error">{error}</p>}

@@ -19,7 +19,13 @@ export default function App() {
 
   return (
     <main className="app">
-      <h1>ProdVton — Virtual Try-On</h1>
+      <header className="topbar">
+        <div className="brand">
+          <span className="logo" aria-hidden="true" />
+          <span className="brand-name">ProdVton</span>
+        </div>
+        <p className="tagline">AI virtual try-on — clothing, makeup &amp; eyewear</p>
+      </header>
 
       <nav className="nav">
         {TABS.map((t) => (
@@ -34,10 +40,12 @@ export default function App() {
         ))}
       </nav>
 
-      {view === "photo" && <PhotoTryOn />}
-      {view === "live" && <LiveTryOn />}
-      {view === "makeup" && <MakeupTryOn />}
-      {view === "eyewear" && <Eyewear3DTryOn />}
+      <section className="panel">
+        {view === "photo" && <PhotoTryOn />}
+        {view === "live" && <LiveTryOn />}
+        {view === "makeup" && <MakeupTryOn />}
+        {view === "eyewear" && <Eyewear3DTryOn />}
+      </section>
     </main>
   );
 }
