@@ -4,12 +4,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { useFaceTracker, type Landmark, type TrackFrame } from "./useFaceTracker";
 
 interface Props {
-  /** Builds the 3D accessory; re-invoked whenever `rebuildKey` changes. */
-  buildModel: () => THREE.Object3D;
+  /** Optional procedural fallback model; re-invoked whenever `rebuildKey` changes. */
+  buildModel?: () => THREE.Object3D;
   /** Change this (e.g. a serialized options string) to swap the model live. */
   rebuildKey: string;
-  /** Optional ingested GLB (object URL); when set, it replaces the procedural model. */
+  /** Ingested GLB (object URL) — the real accessory asset to pose on the head. */
   glbUrl?: string | null;
+  /** Shown over the feed when ready but nothing is loaded yet. */
+  placeholder?: string;
 }
 
 /** Center an object at the origin and scale its bounding box to `targetWidth`. */
@@ -40,7 +42,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
  * NOTE: offset/scale/rotation constants below are reasonable defaults but need
  * on-camera tuning — placement realism can't be verified without a live feed.
  */
-export function ArStage3D({ buildModel, rebuildKey, glbUrl }: Props) {
+export function ArStage3D({ buildModel, rebuildKey, glbUrl, placeholder }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -102,9 +104,11 @@ export function ArStage3D({ buildModel, rebuildKey, glbUrl }: Props) {
         anchor.clear();
         anchor.add(gltf.scene);
       });
-    } else {
+    } else if (buildModelRef.current) {
       anchor.clear();
       anchor.add(buildModelRef.current());
+    } else {
+      anchor.clear();
     }
 
     return () => {
@@ -161,6 +165,9 @@ export function ArStage3D({ buildModel, rebuildKey, glbUrl }: Props) {
       <canvas ref={canvasRef} className="ar-canvas" />
       {status === "loading" && <div className="ar-overlay-msg">Loading camera & face model…</div>}
       {status === "error" && <div className="ar-overlay-msg error">{error}</div>}
+      {status === "ready" && !glbUrl && !buildModel && placeholder && (
+        <div className="ar-overlay-msg">{placeholder}</div>
+      )}
     </div>
   );
 }
