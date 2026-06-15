@@ -11,13 +11,16 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Stable-Makeup repo on PYTHONPATH (provides pipeline_sd15 + modules).
+# Stable-Makeup repo on PYTHONPATH (provides pipeline_sd15, detail_encoder, spiga_draw).
 RUN git clone https://github.com/Xiaojiu-z/Stable-Makeup /app/Stable-Makeup
 ENV PYTHONPATH=/app/Stable-Makeup:$PYTHONPATH
+WORKDIR /app/Stable-Makeup
+RUN pip install --no-cache-dir spiga facelib || true   # structural-guide + face detect
+WORKDIR /app
 
-# Checkpoints (detail/makeup/id encoders + SPIGA) live on the network volume;
-# set their paths as endpoint env vars:
-#   MAKEUP_ENCODER_CKPT, ID_ENCODER_CKPT, MAKEUP_UNET_CKPT  (and HF_TOKEN if gated)
+# Checkpoints (~SD1.5 + makeup/id/pose + image_encoder_l + mobilenet detector) live
+# on the network volume under MODELS_DIR (default /runpod-volume/Stable-Makeup/models);
+# download per the repo README. Set HF_TOKEN if the SD1.5 base is gated.
 COPY handler.py .
 
 CMD ["python", "-u", "handler.py"]

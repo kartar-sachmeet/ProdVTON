@@ -1,0 +1,14 @@
+runpod>=1.7.0
+torch==2.4.0
+diffusers>=0.32.0
+transformers>=4.44.0
+accelerate>=0.34.0
+sentencepiece>=0.2.0
+protobuf>=4.25.0
+peft>=0.13.0
+Pillow>=10.4.0
+huggingface_hub>=0.25.0
+numpy>=1.26.0
+opencv-python-headless>=4.9.0
+scipy>=1.13.0
+# AutoMasker needs DensePose (detectron2) — installed from source in the Dockerfile.

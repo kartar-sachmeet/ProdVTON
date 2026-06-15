@@ -11,8 +11,16 @@ real-time option. Source face + reference makeup look → source wearing it.
    docker push <user>/stable-makeup-worker:latest
    ```
 2. Create a RunPod Serverless endpoint (16GB+ GPU), attach a network volume.
-3. Put the Stable-Makeup checkpoints on the volume and set endpoint env:
-   `MAKEUP_ENCODER_CKPT`, `ID_ENCODER_CKPT`, `MAKEUP_UNET_CKPT` (+ `HF_TOKEN` for SD1.5 if needed).
+3. Put the Stable-Makeup checkpoints on the network volume under `MODELS_DIR`
+   (default `/runpod-volume/Stable-Makeup/models`), matching the repo layout:
+   ```
+   stablemakeup/pytorch_model.bin     # makeup encoder
+   stablemakeup/pytorch_model_1.bin   # id controlnet
+   stablemakeup/pytorch_model_2.bin   # pose controlnet
+   image_encoder_l/                   # CLIP image encoder
+   mobilenet0.25_Final.pth            # face detector (SPIGA)
+   ```
+   (Download links are in the Stable-Makeup repo README.) Set `HF_TOKEN` if the SD1.5 base is gated.
 4. Note the **Endpoint ID** → `backend/.env` as `RUNPOD_MAKEUP_ENDPOINT_ID`
    (reuses `RUNPOD_API_KEY`). The `/api/makeup` route calls it.
 
@@ -24,6 +32,8 @@ real-time option. Source face + reference makeup look → source wearing it.
 → `{ "output": { "image": "<base64 PNG>" } }`
 
 ## Note
-The handler targets the Stable-Makeup repo's pipeline (`pipeline_sd15`). Exact
-class/arg names track that repo — pin a commit when you deploy and adjust
-`_load()` / `run_makeup()` if upstream changes its API.
+`handler.py` mirrors the repo's `infer_kps.py` (assembled UNet + id/pose
+ControlNets + `detail_encoder`, with SPIGA `get_draw` for the structural guide,
+then `makeup_encoder.generate(...)`). **Pin the repo to a commit** when you deploy
+and re-check the import paths (`detail_encoder.encoder_plus`, `pipeline_sd15`,
+`spiga_draw`) against that commit.

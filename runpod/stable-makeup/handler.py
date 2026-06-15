@@ -1,23 +1,28 @@
 """RunPod serverless worker for Stable-Makeup (generative makeup transfer).
 
-High-fidelity, NON-real-time makeup: given a source face and a reference makeup
-image, render the source wearing that makeup. Complements the live AR makeup
-(which is real-time but shade/shader based). Stable-Makeup (SIGGRAPH 2025) is a
-diffusion model — seconds per image on a GPU.
+High-fidelity, NON-real-time makeup: source face + reference makeup look ->
+source wearing it. Complements the live (future) AR makeup.
+
+This mirrors Xiaojiu-z/Stable-Makeup `infer_kps.py`: SD1.5 UNet + two ControlNets
+(id + pose) + a makeup detail-encoder, with SPIGA drawing the structural/pose
+guide from the source face. It is assembled from modules — not a single
+`from_pretrained` — so the Stable-Makeup repo must be on PYTHONPATH and its
+checkpoints present under MODELS_DIR.
 
 Request input (job["input"]):
   source_image:    base64 of the face to make up (required)
-  reference_image: base64 of the makeup look to transfer (required)
-  intensity:       float 0..2 makeup strength (default 1.0)
-  steps:           int diffusion steps (default 30)
+  reference_image: base64 of the makeup look (required)
+  intensity:       float makeup strength → guidance_scale (default 1.6)
   seed:            int (optional)
 
 Response: { "image": "<base64 PNG>" }
 
-Prerequisites baked into the image (see README + Dockerfile):
-  - The Stable-Makeup repo (Xiaojiu-z/Stable-Makeup) on PYTHONPATH
-  - SD1.5 base + Stable-Makeup checkpoints (detail encoder, makeup modules) and
-    the SPIGA/face landmark model, mounted on the network volume.
+MODELS_DIR layout (download from the repo's release; see README):
+  $MODELS_DIR/stablemakeup/pytorch_model.bin     (makeup encoder)
+  $MODELS_DIR/stablemakeup/pytorch_model_1.bin   (id controlnet)
+  $MODELS_DIR/stablemakeup/pytorch_model_2.bin   (pose controlnet)
+  $MODELS_DIR/image_encoder_l/                   (CLIP image encoder)
+  $MODELS_DIR/mobilenet0.25_Final.pth            (face detector for SPIGA)
 """
 
 from __future__ import annotations
@@ -30,28 +35,51 @@ import runpod
 import torch
 from PIL import Image
 
-_pipeline = None
+SD15_MODEL = os.environ.get("SD15_MODEL", "runwayml/stable-diffusion-v1-5")
+MODELS_DIR = os.environ.get("MODELS_DIR", "/runpod-volume/Stable-Makeup/models")
+
+_state = None  # (pipe, makeup_encoder, get_draw)
 
 
 def _load():
-    """Load the Stable-Makeup pipeline once per cold start.
+    """Assemble the Stable-Makeup pipeline once per cold start (per infer_kps.py)."""
+    global _state
+    if _state is None:
+        from diffusers import ControlNetModel, DDIMScheduler, UNet2DConditionModel
 
-    Mirrors the reference inference in the Stable-Makeup repo: SD1.5 UNet +
-    the makeup detail encoder + the makeup cross-attention modules, with a
-    face-landmark guide. Checkpoint paths come from env (network volume).
-    """
-    global _pipeline
-    if _pipeline is None:
-        from pipeline_sd15 import StableMakeupPipeline  # provided by the repo on PYTHONPATH
+        # Repo-provided modules (Stable-Makeup on PYTHONPATH):
+        from detail_encoder.encoder_plus import detail_encoder
+        from pipeline_sd15 import StableDiffusionControlNetPipeline
+        from spiga_draw import get_draw  # SPIGA structural/pose guide
 
-        _pipeline = StableMakeupPipeline.from_pretrained(
-            base_model=os.environ.get("SD15_MODEL", "runwayml/stable-diffusion-v1-5"),
-            makeup_encoder_ckpt=os.environ["MAKEUP_ENCODER_CKPT"],
-            id_encoder_ckpt=os.environ["ID_ENCODER_CKPT"],
-            makeup_unet_ckpt=os.environ["MAKEUP_UNET_CKPT"],
-            torch_dtype=torch.float16,
-        ).to("cuda")
-    return _pipeline
+        unet = UNet2DConditionModel.from_pretrained(SD15_MODEL, subfolder="unet").to(
+            "cuda", dtype=torch.float32
+        )
+        id_encoder = ControlNetModel.from_unet(unet)
+        pose_encoder = ControlNetModel.from_unet(unet)
+        makeup_encoder = detail_encoder(
+            unet, os.path.join(MODELS_DIR, "image_encoder_l"), "cuda", dtype=torch.float32
+        )
+
+        ckpt = os.path.join(MODELS_DIR, "stablemakeup")
+        makeup_encoder.load_state_dict(torch.load(os.path.join(ckpt, "pytorch_model.bin")), strict=False)
+        id_encoder.load_state_dict(torch.load(os.path.join(ckpt, "pytorch_model_1.bin")), strict=False)
+        pose_encoder.load_state_dict(torch.load(os.path.join(ckpt, "pytorch_model_2.bin")), strict=False)
+        id_encoder.to("cuda")
+        pose_encoder.to("cuda")
+        makeup_encoder.to("cuda")
+
+        pipe = StableDiffusionControlNetPipeline.from_pretrained(
+            SD15_MODEL,
+            safety_checker=None,
+            unet=unet,
+            controlnet=[id_encoder, pose_encoder],
+            torch_dtype=torch.float32,
+        )
+        pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
+        pipe = pipe.to("cuda")
+        _state = (pipe, makeup_encoder, get_draw)
+    return _state
 
 
 def _decode(b64: str) -> Image.Image:
@@ -69,24 +97,24 @@ def _encode(img: Image.Image) -> str:
 def run_makeup(job_input: dict) -> dict:
     source = _decode(job_input["source_image"]).resize((512, 512))
     reference = _decode(job_input["reference_image"]).resize((512, 512))
-    seed = job_input.get("seed")
-    generator = torch.Generator("cuda").manual_seed(int(seed)) if seed is not None else None
 
-    pipe = _load()
-    result = pipe(
-        id_image=source,
+    pipe, makeup_encoder, get_draw = _load()
+    pose_image = get_draw(source, size=512)  # SPIGA structural guide
+    result = makeup_encoder.generate(
+        id_image=[source, pose_image],
         makeup_image=reference,
-        num_inference_steps=int(job_input.get("steps", 30)),
-        makeup_guidance_scale=float(job_input.get("intensity", 1.0)) * 1.6,
-        generator=generator,
-    ).images[0]
+        pipe=pipe,
+        guidance_scale=float(job_input.get("intensity", 1.6)),
+    )
+    if isinstance(result, list):
+        result = result[0]
     return {"image": _encode(result)}
 
 
 def handler(job):
     try:
         return run_makeup(job["input"])
-    except Exception as exc:  # surface a clean error
+    except Exception as exc:
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
