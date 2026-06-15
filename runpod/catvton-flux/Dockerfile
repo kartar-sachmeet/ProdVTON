@@ -14,6 +14,10 @@ WORKDIR /app
 
 COPY runpod/catvton-flux/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# The base image ships a mismatched torch (cu121) + torchaudio (cu124); torchaudio's
+# CUDA check crashes transformers' import chain. We don't use audio at all, so remove
+# torchaudio entirely — transformers then skips that import path cleanly.
+RUN pip uninstall -y torchaudio || true
 
 # CatVTON repo (provides model.cloth_masker.AutoMasker) + DensePose via detectron2.
 # AutoMasker checkpoints (DensePose/SCHP) are auto-pulled from the zhengchong/CatVTON
