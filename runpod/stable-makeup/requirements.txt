@@ -1,5 +1,5 @@
 runpod>=1.7.0
-torch==2.4.0
+# Do NOT install torch here — use the base image's CUDA-matched torch (see catvton-flux note).
 diffusers>=0.27.0
 transformers>=4.40.0
 accelerate>=0.30.0

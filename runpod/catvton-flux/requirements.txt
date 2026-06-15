@@ -1,5 +1,7 @@
 runpod>=1.7.0
-torch==2.4.0
+# DO NOT install torch here — the base image ships torch+torchaudio built for CUDA 12.4.
+# Reinstalling torch from PyPI pulls a cu121 wheel and mismatches torchaudio (cu124),
+# which crashes on import (transformers→torchaudio CUDA check). Use the base image's torch.
 diffusers>=0.32.0
 transformers>=4.44.0
 accelerate>=0.34.0
