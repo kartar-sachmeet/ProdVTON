@@ -12,8 +12,11 @@ WORKDIR /app
 COPY runpod/stable-makeup/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 # Base image extras crash diffusers/transformers import (torchaudio CUDA mismatch;
-# flash-attn v3 op-schema). We need neither (SDPA fallback). Remove both.
-RUN pip uninstall -y torchaudio flash-attn flash_attn || true
+# flash-attn v3 op-schema). We need neither (SDPA fallback). Remove torchaudio + all
+# flash-attn-family distributions (match by dist name; FA3 uses varied names).
+RUN pip uninstall -y torchaudio || true
+RUN python -c "import importlib.metadata as m; print('\n'.join(d.metadata['Name'] for d in m.distributions() if 'flash' in (d.metadata['Name'] or '').lower()))" \
+      | xargs -r pip uninstall -y || true
 
 # Stable-Makeup repo on PYTHONPATH (provides pipeline_sd15, detail_encoder, spiga_draw).
 RUN git clone https://github.com/Xiaojiu-z/Stable-Makeup /app/Stable-Makeup

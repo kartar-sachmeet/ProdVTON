@@ -18,8 +18,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 #  - torchaudio (cu124 vs torch cu121) → CUDA-version check crash via transformers
 #  - flash-attn v3 → torch.library.infer_schema chokes on its op signature when
 #    diffusers imports FluxFill
-# We need neither (diffusers falls back to PyTorch SDPA attention). Remove both.
-RUN pip uninstall -y torchaudio flash-attn flash_attn || true
+# We need neither (diffusers falls back to PyTorch SDPA). Remove torchaudio and ALL
+# flash-attn-family distributions (FA3 ships under various dist names, so match by name).
+RUN pip uninstall -y torchaudio || true
+RUN python -c "import importlib.metadata as m; print('\n'.join(d.metadata['Name'] for d in m.distributions() if 'flash' in (d.metadata['Name'] or '').lower()))" \
+      | xargs -r pip uninstall -y || true
 
 # CatVTON repo (provides model.cloth_masker.AutoMasker) + DensePose via detectron2.
 # AutoMasker checkpoints (DensePose/SCHP) are auto-pulled from the zhengchong/CatVTON

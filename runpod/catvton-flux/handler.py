@@ -150,7 +150,7 @@ def handler(job):
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
-log("handler module imported ✓ (torch/diffusers OK)")
+log("handler module imported ✓ (torch/diffusers OK) build=flashfix3")
 
 
 runpod.serverless.start({"handler": handler})
