@@ -24,7 +24,15 @@ RUN pip uninstall -y torchaudio || true
 RUN python -c "import importlib.metadata as m; print('\n'.join(d.metadata['Name'] for d in m.distributions() if 'flash' in (d.metadata['Name'] or '').lower()))" \
       | xargs -r pip uninstall -y || true
 
+# ROOT-CAUSE FIX: torch 2.4's torch.library.infer_schema can't parse string type
+# annotations ('torch.Tensor'), so the FA3 op registration crashes during diffusers'
+# FluxFill import. Fixed in torch 2.5+. Install a coherent torch 2.5.1 cu121
+# (+matching torchvision, no torchaudio). cu121 wheels run fine on the 12.4 driver.
+RUN pip install --no-cache-dir --force-reinstall \
+      torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu121
+
 # CatVTON repo (provides model.cloth_masker.AutoMasker) + DensePose via detectron2.
+# Built AFTER the torch upgrade so detectron2 compiles against torch 2.5.1.
 # AutoMasker checkpoints (DensePose/SCHP) are auto-pulled from the zhengchong/CatVTON
 # HF repo at runtime, cached on the network volume. FORCE_CUDA + arch list let
 # detectron2's CUDA ops compile without a GPU present (RunPod's builder has none).
