@@ -34,7 +34,7 @@ import torch
 
 # Build stamp printed BEFORE the diffusers import — so even if that import crashes,
 # the logs show which build is actually running (settles "did it deploy?").
-print(f"[catvton] BUILD=torch251 booting; torch={torch.__version__}", flush=True)
+print(f"[catvton] BUILD=avfix booting; torch={torch.__version__}", flush=True)
 
 from diffusers import FluxFillPipeline, FluxTransformer2DModel
 from PIL import Image, ImageFilter

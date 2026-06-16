@@ -7,5 +7,6 @@ opencv-python-headless>=4.9.0
 Pillow>=10.4.0
 numpy>=1.26.0
 huggingface_hub>=0.25.0
+av>=12.0.0  # PyAV — pulled in during transformers/torchvision import
 # The Stable-Makeup repo (Xiaojiu-z/Stable-Makeup) is cloned onto PYTHONPATH in
 # the Dockerfile; SPIGA / face-landmark deps come from that repo's requirements.
